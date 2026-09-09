@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.vite/
+test-results/
+playwright-report/
+assets-build.log
+*.blend1
+*.log
+.env
+.env.*
+!.env.example
+.codex/
+.agents/
+# Старый исходник прототипа; актуальные Blender-файлы находятся в assets/.
+/public/models/vehicles.blend

@@ -1,0 +1,14 @@
+import {TYPES,MAPS} from '../server/simulation.mjs';
+export type Kind=keyof typeof TYPES;
+export type Order={type:'move'|'attack';x:number;z:number;target:string|null};
+export type Unit={id:string;owner:string;type:Kind;x:number;z:number;hp:number;maxHp:number;angle:number;turret:number;repairing:boolean;order:Order|null;waypoints:{x:number;z:number}[]};
+export type Player={id:string;name:string;slot:number;credits:number;alive:boolean;kills:number;produced:number;queue:{id:string;type:Kind;left:number}[];rally:{x:number;z:number}};
+export type Base={id:string;owner:string;x:number;z:number;hp:number;maxHp:number};
+export type Point={id:number;x:number;z:number;owner:string|null;capture:number;captor:string|null;contested:boolean};
+export type Connection={id:string;name:string;slot:number;ready:boolean;connected:boolean;reconnectSeconds:number};
+export type GameEvent={type:string;x:number;z:number;tx?:number;tz?:number;from?:string;owner?:string;heavy?:boolean;unit?:Kind};
+export type State={time:number;tick:number;map:keyof typeof MAPS;units:Unit[];bases:Base[];points:Point[];players:Player[];ended:boolean;winner:string|null;events:GameEvent[];connections:Connection[]};
+export type Lobby={code:string;host:string;map:keyof typeof MAPS;players:Connection[]};
+export type RoomSummary={code:string;name:string;host:string;players:number;capacity:number;status:'waiting'|'playing'|'finished';map:string};
+export const COLORS=['#bddb82','#ed997d','#85c9e0','#c5a4ec'];
+export const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
