@@ -3,6 +3,7 @@ dist/
 .vite/
 test-results/
 playwright-report/
+release/
 assets-build.log
 *.blend1
 *.log

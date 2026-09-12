@@ -13,7 +13,7 @@ dark=mat('Rubber',(.032,.043,.04));steel=mat('Steel',(.14,.18,.17),.55);optic=ma
 def box(name,loc,scale,m,parent=None,bevel=.04):
     bpy.ops.mesh.primitive_cube_add(size=1,location=loc);o=bpy.context.object;o.name=name;o.dimensions=scale;bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
     if bevel:
-        mod=o.modifiers.new('Armor bevel','BEVEL');mod.width=bevel;mod.segments=1
+        mod=o.modifiers.new('Armor bevel','BEVEL');mod.width=bevel;mod.segments=2
         o.modifiers.new('Weighted normals','WEIGHTED_NORMAL')
     o.data.materials.append(m)
     if parent:o.parent=parent
@@ -42,6 +42,31 @@ def portrait(name):
     for pos,power,size in [((2,-4,8),1300,5),((-5,1,4),900,4),((0,5,6),1500,3)]:
         bpy.ops.object.light_add(type='AREA',location=pos);l=bpy.context.object;l.data.energy=power;l.data.shape='DISK';l.data.size=size;l.rotation_euler=(-l.location).to_track_quat('-Z','Y').to_euler()
     scene.render.image_settings.file_format='PNG';scene.render.filepath=os.path.join(ICONS,name+'.png');bpy.ops.render.render(write_still=True)
+def finish_vehicle(kind,turret):
+    # Мелкие функциональные детали остаются частью двух объединённых мешей.
+    rng=random.Random(430+sum(map(ord,kind)))
+    for x in [-.7,.7]:
+        box('Tool bracket',(x,1.3,1.43),(.15,.8,.08),steel)
+        cyl('Recovery cable',(x,1.55,1.6),.11,.72,steel,(math.pi/2,0,0),vertices=10)
+        cyl('Exhaust pipe',(x*1.1,1.82,1.23),.13,.65,dark,(math.pi/2,0,0))
+        box('Tail light',(x,2.05,.95),(.19,.1,.13),lamp)
+    box('Radio case',(-.48,.48,2.23),(.4,.5,.23),camo,turret)
+    for x in [-.65,.65]:
+        for y in [-1.35,-.8,.65,1.35]:
+            cyl('Fastener',(x,y,1.41),.035,.025,steel,vertices=8)
+    # Небольшое различие панелей вместо одинакового пластика.
+    shades=[]
+    for factor in [.82,.94,1.07]:
+        shades.append(mat(kind+' weathered panel '+str(factor),tuple(v*factor for v in (.32,.39,.30)),.22))
+    for obj in list(bpy.context.scene.objects):
+        if obj.type=='MESH' and obj.data.materials and obj.data.materials[0]==armor and rng.random()<.35:
+            obj.data.materials[0]=rng.choice(shades)
+    if kind not in ['buggy','repair','rocket']:
+        for x in [-.88,.88]:
+            box('Turret applique',(x,.2,2.06),(.18,.95,.21),sand,turret)
+            box('Optical shield',(x,-.54,1.95),(.24,.21,.27),steel,turret)
+            box('Optical lens',(x,-.66,1.95),(.15,.03,.1),optic,turret)
+
 for kind in ['tank','scout','artillery']:
     clear();length=4.25 if kind=='artillery' else 3.8 if kind=='tank' else 3.65;width=2.5 if kind!='scout' else 2.15
     box('Lower hull',(0,0,.7),(width,length,.8),armor,bevel=.22)
@@ -88,16 +113,76 @@ for kind in ['tank','scout','artillery']:
     box('Optics',(-.48,-.65,2.12 if kind=='tank' else height+.16),(.25,.18,.16),optic,turret,.015)
     for x in [-.65,.65]:box('TeamMark',(x,-1.3,1.38),(.26,.42,.025),white)
     box('Stowage',(0,.9,1.89),(1.4,.4,.35),camo,turret,.04)
+    finish_vehicle(kind,turret)
+    merge(turret,'TurretArmor');merge(None,'Chassis');export(kind)
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(SOURCE,kind+'.blend'));portrait(kind)
+# Дополнительные классы с разными силуэтами и функциональным оборудованием.
+for kind in ['buggy','heavy','destroyer','rocket','repair']:
+    clear();tracked=kind in ['heavy','destroyer'];width=2.8 if kind=='heavy' else 2.15;length=4.4 if kind!='buggy' else 3.1
+    box('Armored chassis',(0,0,.72),(width,length,.72),armor,bevel=.18)
+    for x in [-width/2,width/2]:
+        if tracked:
+            box('Track',(x,0,.47),(.6,length+.2,.82),dark,bevel=.18)
+            for y in [-1.7,-1,-.3,.4,1.1,1.8]:
+                cyl('Road wheel',(x*1.07,y,.48),.31,.6,steel,(0,math.pi/2,0))
+            for i in range(6):box('Armored skirt',(x*1.17,-1.75+i*.68,1.04),(.18,.6,.6),sand,bevel=.05)
+        else:
+            for y in ([-1.1,1.1] if kind=='buggy' else [-1.6,.1,1.6]):
+                cyl('Tire',(x,y,.5),.51,.4,dark,(0,math.pi/2,0),vertices=16)
+                cyl('Hub',(x*1.22,y,.5),.23,.07,sand,(0,math.pi/2,0))
+    box('Engine hood',(0,-length*.34,1.17),(width-.3,length*.27,.3),sand)
+    for x in [-.78,.78]:box('Lamp',(x,-length/2-.03,1.03),(.26,.12,.2),lamp)
+    bpy.ops.object.empty_add();turret=bpy.context.object;turret.name='Turret'
+    if kind=='buggy':
+        for x in [-.77,.77]:
+            for y in [-.3,.75]:box('Roll cage',(x,y,1.7),(.1,.1,1.1),steel)
+        box('Roll roof',(0,.22,2.26),(1.66,1.2,.12),steel)
+        box('Seat',(0,.4,1.3),(1.3,.7,.6),dark)
+        box('Machine gun',(0,-.2,2.47),(.5,.7,.34),armor,turret)
+        cyl('Barrel',(0,-1,2.47),.065,1.2,steel,(math.pi/2,0,0),turret)
+        cyl('Spare wheel',(0,1.72,1.16),.47,.24,dark,(math.pi/2,0,0))
+    elif kind in ['heavy','destroyer']:
+        low=kind=='destroyer';height=1.65 if low else 2.05
+        box('Casemate' if low else 'Heavy turret',(0,0,height),(2.02,2.4,.65 if low else 1.1),armor,turret,.25)
+        for x in [-.82,.82]:
+            for y in [-.8,-.3,.2,.7]:box('Reactive armor',(x,y,height+.56),(.5,.38,.18),sand,turret)
+        barrel=4.1 if low else 2.8
+        cyl('Cannon',(0,-1.2-barrel/2,height+.15),.17,barrel,steel,(math.pi/2,0,0),turret)
+        cyl('Sleeve',(0,-2,height+.15),.25,1.2,armor,(math.pi/2,0,0),turret)
+        box('Muzzle brake',(0,-1.2-barrel,height+.15),(.47,.35,.3),dark,turret)
+        cyl('Commander hatch',(.55,.6,height+.62),.34,.13,steel,parent=turret)
+        box('Laser sight',(-.55,-1.23,height+.2),(.4,.1,.18),optic,turret)
+    else:
+        box('Truck cabin',(0,-1.3,1.72),(1.95,1.45,1.4),armor,bevel=.12)
+        box('Windshield',(0,-2.04,1.97),(1.6,.06,.53),optic,bevel=.015)
+        if kind=='rocket':
+            box('Launcher support',(0,.6,1.48),(1.7,2,.65),steel,turret)
+            for x in [-.64,0,.64]:
+                for z in [1.97,2.57]:
+                    cyl('Launch tube',(x,.45,z),.27,2.9,sand,(math.pi/2,0,0),turret)
+                    cyl('Tube opening',(x,-1.03,z),.22,.04,dark,(math.pi/2,0,0),turret)
+        else:
+            box('Repair module',(0,.7,1.55),(1.9,2.25,1.05),sand)
+            box('Crane pedestal',(0,.6,2.2),(.6,.6,.8),armor,turret)
+            box('Crane boom',(0,0,2.85),(.24,2.7,.3),steel,turret)
+            cyl('Repair cable',(0,-1.25,2.3),.035,.85,steel,parent=turret,vertices=6)
+            for x in [-.97,.97]:
+                box('Service stripe',(x,.7,1.65),(.03,1.3,.17),white)
+                box('Service mark',(x,.7,1.65),(.04,.18,.66),white)
+    cyl('Antenna',(-.65,1.45,2.5),.015,1.7,steel,vertices=6)
+    finish_vehicle(kind,turret)
     merge(turret,'TurretArmor');merge(None,'Chassis');export(kind)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(SOURCE,kind+'.blend'));portrait(kind)
 # Гранёные скалы с неодинаковыми слоями и естественным силуэтом.
 for variant in range(3):
     clear();random.seed(51+variant)
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2,radius=1);o=bpy.context.object;o.name='Sandstone'
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3,radius=1);o=bpy.context.object;o.name='Sandstone'
     for v in o.data.vertices:
         z=v.co.z;v.co.x*=1+random.uniform(-.15,.15);v.co.y*=.8+random.uniform(-.12,.12);v.co.z=max(-.22,z*.85)
-        if z>.45:v.co.x*=.7
+        if z>.45:v.co.x*=.78
+        v.co.x*=1+.06*math.sin(z*24);v.co.y*=1+.04*math.sin(z*24)
     o.data.materials.append(rockmat);o.data.materials.append(sand)
-    for face in o.data.polygons:face.material_index=1 if face.center.z>.4 and random.random()>.5 else 0
+    o.data.update()
+    for face in o.data.polygons:face.material_index=1 if face.center.z>.15 and (int(face.center.z*14)%3==0 or random.random()>.85) else 0
     export('rock'+str(variant))
 print('ASSETS_READY',OUT)
